@@ -1,0 +1,16 @@
+{
+  "name": "토플 단어",
+  "short_name": "토플 단어",
+  "description": "해커스 보카 30 Days 간격 반복 암기",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F5F2",
+  "theme_color": "#0F8C7E",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
