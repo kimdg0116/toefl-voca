@@ -268,7 +268,8 @@ footer { margin-top:28px; }
   <div class="settings-row col"><div><b>테마 색</b><p id="colorName"></p></div><div class="swatches" id="colorPick"></div></div>
   <div class="settings-row col"><div><b>하루 신규 단어</b><p>복습 카드는 분량과 상관없이 모두 나와요</p></div><div class="seg" id="newMode"></div></div>
   <div class="settings-row"><div><b>시험일</b><p>홈의 D-day 기준</p></div><input type="date" id="exam"></div>
-  <div class="settings-row col"><div><b>발음 목소리</b><p>폰에 깔린 영어 목소리 중 골라요. 프리미엄·향상된 목소리를 받아 두면 훨씬 자연스러워요</p></div>
+  <div class="settings-row"><div><b>원어민 음성 파일</b><p id="audioInfo"></p></div><button type="button" class="pill" data-act="pickAudio">불러오기</button></div>
+  <div class="settings-row col"><div><b>발음 목소리</b><p id="voiceInfo">폰에 깔린 영어 목소리 중 골라요. 프리미엄·향상된 목소리를 받아 두면 훨씬 자연스러워요</p></div>
     <div style="display:flex;gap:8px"><select id="voiceSel" style="flex:1;min-width:0;padding:9px 10px;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)"></select><button type="button" class="pill" data-act="tryVoice">들어보기</button></div></div>
   <div class="settings-row"><div><b>말하기 속도</b><p>원어민 속도는 1.0</p></div><div class="seg" id="rateSel" style="width:170px"></div></div>
   <div class="settings-row"><div><b>발음 자동 재생</b><p>카드가 넘어갈 때 단어를 읽어 줘요</p></div><div class="seg" id="autoSay" style="width:110px"></div></div>
@@ -286,9 +287,10 @@ footer { margin-top:28px; }
 <button type="button" id="upd" class="upd" hidden>새 버전이 있습니다 · 눌러서 새로고침</button>
 <input type="file" id="fileWords" accept=".json,application/json" hidden>
 <input type="file" id="fileBackup" accept=".json,application/json" hidden>
+<input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.12-5';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.12-6';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -356,6 +358,32 @@ function voices() {
 }
 function voiceFor() { const vs = voices(); return vs.find(v => v.voiceURI === S.set.voice) || vs[0] || null; }
 if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => { if (!$('#settings').hidden) drawSettings(); };
+// 원어민 음성 파일: 폰 안(IndexedDB)에 통째로 보관하고, 누를 때마다 그 부분만 잘라 재생. 없으면 폰 목소리로
+let AUDIO = null, audUrl = '';
+const AUD = new Audio();
+function idb() {
+  return idb.p || (idb.p = new Promise((ok, no) => {
+    const r = indexedDB.open('toefl-voca', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+  }));
+}
+const idbDo = (mode, fn) => idb().then(db => new Promise((ok, no) => {
+  const t = db.transaction('files', mode), q = fn(t.objectStore('files'));
+  t.oncomplete = () => ok(q && q.result); t.onerror = () => no(t.error);
+}));
+idbDo('readonly', s => s.get('audio')).then(a => { if (a && a.blob) AUDIO = a; }).catch(() => {});
+function play(key, text) {
+  const r = AUDIO && AUDIO.idx[key];
+  if (!r) return say(text);
+  try {
+    speechSynthesis.cancel();
+    if (audUrl) URL.revokeObjectURL(audUrl);
+    audUrl = URL.createObjectURL(AUDIO.blob.slice(AUDIO.base + r[0], AUDIO.base + r[0] + r[1], 'audio/aac'));
+    AUD.src = audUrl; AUD.playbackRate = S.set.rate || 1;
+    AUD.play().catch(() => say(text));
+  } catch (e) { say(text); }
+}
 function say(t) {
   try {
     speechSynthesis.cancel();
@@ -454,7 +482,7 @@ function renderHome() {
 }
 
 /* ── 카드 ── */
-const exHtml = (e, w) => `<div class="ex" data-say="${esc(e.en)}">${hl(e.en, w)} <span class="say">듣기</span>${e.ko ? `<span class="k">${esc(e.ko)}</span>` : ''}</div>`;
+const exHtml = (e, w) => `<div class="ex" data-say="${esc(e.en)}" data-key="e:${w.id}:${w.ex.indexOf(e)}">${hl(e.en, w)} <span class="say">듣기</span>${e.ko ? `<span class="k">${esc(e.ko)}</span>` : ''}</div>`;
 function backHtml(w) {
   let h = '';
   w.sen.forEach((s, i) => {
@@ -476,7 +504,7 @@ function startSession(ids, opts) {
   go('study'); speakCur();
 }
 const cur = () => sess && byId[sess.q[0]];
-function speakCur() { const w = cur(); if (w && S.set.auto) say(w.w); }
+function speakCur() { const w = cur(); if (w && S.set.auto) play('w:' + w.id, w.w); }
 function renderStudy() {
   const w = cur();
   if (!w) return go('done');
@@ -556,7 +584,7 @@ function renderQuiz() {
   let h = phead(quiz.title, TYPES[q.ty], `${quiz.i + 1} / ${quiz.qs.length}`) + `<div class="bar" style="margin:0 0 4px"><i style="width:${Math.round(quiz.i / quiz.qs.length * 100)}%"></i></div>`;
   h += q.ty === 'rev'
     ? `<div class="qhead"><div class="k">${esc(firstKo(w))}</div><div class="q">${esc(synText(w))}</div><div class="q">알맞은 단어를 고르세요</div></div>`
-    : `<div class="qhead">${stars(w.s)}<div class="w">${esc(w.w)}</div><button type="button" class="spk sm" data-act="sayW" data-w="${esc(w.w)}" aria-label="발음 듣기">${SPK}</button>
+    : `<div class="qhead">${stars(w.s)}<div class="w">${esc(w.w)}</div><button type="button" class="spk sm" data-act="sayW" data-id="${w.id}" data-w="${esc(w.w)}" aria-label="발음 듣기">${SPK}</button>
        <div class="q">${q.ty === 'syn' ? '같은 뜻의 동의어를 고르세요' : '알맞은 뜻을 고르세요'}</div></div>`;
   q.opts.forEach((id, k) => {
     const cls = q.pick == null ? '' : id === q.id ? 'ok' : id === q.pick ? 'no' : '';
@@ -570,7 +598,7 @@ function pick(k) {
   const q = quiz.qs[quiz.i]; if (q.pick != null) return;
   q.pick = q.opts[k];
   if (q.pick !== q.id) addWeak(q.id, 1);
-  if (q.ty === 'rev') say(byId[q.id].w);
+  if (q.ty === 'rev') play('w:' + q.id, byId[q.id].w);
   save(); renderQuiz();
 }
 function renderQuizEnd() {
@@ -678,6 +706,8 @@ function drawSettings() {
   const seg = (vals, cur, k) => vals.map(([v, lab]) => `<button type="button" class="${String(cur) === String(v) ? 'on' : ''}" data-set="${k}" data-v="${v}">${lab}</button>`).join('');
   $('#newMode').innerHTML = seg([['day', '1 Day'], ['40', '40'], ['30', '30'], ['20', '20']], S.set.newMode, 'newMode');
   $('#autoSay').innerHTML = seg([['1', '켬'], ['0', '끔']], S.set.auto ? '1' : '0', 'auto');
+  $('#audioInfo').textContent = AUDIO ? `${AUDIO.voice} · ${AUDIO.count.toLocaleString()}개 · ${Math.round(AUDIO.size / 1e6)}MB · 이 소리를 먼저 써요` : '맥에서 만든 toefl-audio.bin 을 불러오면 원어민 녹음으로 읽어 줘요';
+  $('#voiceInfo').textContent = AUDIO ? '음성 파일에 없는 소리에만 써요' : '폰에 깔린 영어 목소리 중 골라요. 프리미엄·향상된 목소리를 받아 두면 훨씬 자연스러워요';
   $('#rateSel').innerHTML = seg([['0.8', '0.8'], ['0.9', '0.9'], ['1', '1.0']], String(S.set.rate || 1), 'rate');
   const vs = voices(), cur = voiceFor();
   $('#voiceSel').innerHTML = vs.length ? vs.map((v, i) => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? ' selected' : ''}>${esc(v.name)} · ${esc(v.lang)}${i === 0 ? ' (추천)' : ''}</option>`).join('')
@@ -753,6 +783,22 @@ $('#fileWords').onchange = function () {
     toast(`${ws.length}단어를 불러왔어요${seeded ? ` · 옵시디언 복습 기록 ${seeded}개 이어받음` : ''}`);
   });
 };
+$('#fileAudio').onchange = async function () {
+  const f = this.files && this.files[0]; this.value = '';
+  if (!f) return;
+  try {
+    const head = new Uint8Array(await f.slice(0, 12).arrayBuffer());
+    if (String.fromCharCode(...head.slice(0, 8)) !== 'TVAUDIO1') throw new Error('음성 파일이 아니에요. toefl-audio.bin 을 골라 주세요');
+    const hl = new DataView(head.buffer).getUint32(8, true);
+    const meta = JSON.parse(await f.slice(12, 12 + hl).text());
+    const a = { blob: f, base: 12 + hl, idx: meta.items, voice: meta.voice, count: Object.keys(meta.items).length, size: f.size };
+    toast('음성 파일을 폰에 저장하는 중');
+    await idbDo('readwrite', s => s.put(a, 'audio'));
+    AUDIO = a; drawSettings();
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+    toast(`음성 ${a.count.toLocaleString()}개를 불러왔어요 · ${a.voice}`);
+  } catch (e) { toast(e.message || '음성 파일을 저장하지 못했어요'); }
+};
 $('#fileBackup').onchange = function () {
   readFile(this, (err, j) => {
     if (err) return toast(err);
@@ -787,8 +833,9 @@ $('#settings').addEventListener('click', e => {
   if (b.dataset.pickcolor) return setColor(b.dataset.pickcolor);
   if (b.dataset.set === 'newMode') { S.set.newMode = b.dataset.v; save(); drawSettings(); return render(); }
   if (b.dataset.set === 'auto') { S.set.auto = b.dataset.v === '1'; save(); return drawSettings(); }
-  if (b.dataset.set === 'rate') { S.set.rate = +b.dataset.v; save(); drawSettings(); return say('Many famous writers have kept diaries to help them recall the past.'); }
+  if (b.dataset.set === 'rate') { S.set.rate = +b.dataset.v; save(); drawSettings(); return play('e:1-1:0', 'Many famous writers have kept diaries to help them recall the past.'); }
   if (b.dataset.act === 'tryVoice') return say('Many famous writers have kept diaries to help them recall the past.');
+  if (b.dataset.act === 'pickAudio') return $('#fileAudio').click();
   const a = b.dataset.act;
   if (a === 'closeSet') openSettings(false);
   else if (a === 'pickWords') $('#fileWords').click();
@@ -797,14 +844,14 @@ $('#settings').addEventListener('click', e => {
 });
 V.addEventListener('click', e => {
   const ex = e.target.closest('[data-say]');
-  if (ex && view === 'study') return say(ex.dataset.say);
+  if (ex) return play(ex.dataset.key, ex.dataset.say);
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act, d = +el.dataset.d, t = S.set.test;
   if (a === 'noop') return;
   if (a === 'start') return startSession(shuffle(dueIds()).concat(newIds()));
   if (a === 'flip') { flipped = true; renderStudy(); return window.scrollTo(0, 0); }
-  if (a === 'say') { e.stopPropagation(); const w = cur(); if (w) say(w.w); return; }
-  if (a === 'sayW') return say(el.dataset.w);
+  if (a === 'say') { e.stopPropagation(); const w = cur(); if (w) play('w:' + w.id, w.w); return; }
+  if (a === 'sayW') return play('w:' + el.dataset.id, el.dataset.w);
   if (a === 'rate') return rate(+el.dataset.r);
   if (a === 'pr') return practice(+el.dataset.r);
   if (a === 'home') return go('home');

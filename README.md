@@ -19,6 +19,14 @@ python3 tools/build_words.py <work>
 
 아래 해석 줄을 OCR 이 놓친 페이지(46·197·212·270·297)는 300dpi 로 다시 인식해 `<work>/pg300/` 에 둔다 (`parse.lines` 가 자동 교체).
 
+## 원어민 음성 파일
+
+맥 프리미엄 목소리로 단어 1,701개 + 예문 약 1,870개를 녹음해 `data/toefl-audio.bin` (약 50MB) 을 만든다. git 에 올리지 않는다.
+
+1. 맥: 시스템 설정 > 손쉬운 사용 > 읽기 및 말하기 > 시스템 음성 옆 (i) > 영어 > **Ava (프리미엄)** 받기
+2. `python3 tools/build_audio.py` (목소리 자동 선택, 10~20분. 다시 돌리면 빠진 것만)
+3. 폰으로 AirDrop → 앱 설정 > 원어민 음성 파일 > 불러오기. 없는 소리는 폰 목소리로 읽는다.
+
 ## 버전 올리기
 
 `index.html` 의 `APP_VERSION`, `sw.js` 의 `VERSION`, `version.json` 세 곳을 같이 올린다.
