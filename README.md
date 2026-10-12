@@ -21,4 +21,4 @@ python3 tools/build_words.py <work>
 
 ## 버전 올리기
 
-`index.html` 의 `CURRENT`, `sw.js` 의 `VERSION`, `version.json` 세 곳을 같이 올린다.
+`index.html` 의 `APP_VERSION`, `sw.js` 의 `VERSION`, `version.json` 세 곳을 같이 올린다.
