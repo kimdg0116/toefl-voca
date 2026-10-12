@@ -272,13 +272,20 @@ footer { margin-top:28px; }
   <div class="settings-row"><div><b>단어 데이터</b><p id="dataInfo"></p></div><button type="button" class="pill" data-act="pickWords">불러오기</button></div>
   <div class="settings-row"><div><b>진도 백업</b><p>진도는 이 폰에만 저장돼요</p></div><div class="pills"><button type="button" class="pill" data-act="export">내보내기</button><button type="button" class="pill" data-act="pickBackup">복원</button></div></div>
 </div></div>
+<div id="qsheet" class="panel" role="dialog" aria-modal="true" aria-labelledby="qsTitle" hidden><div class="sheet">
+  <div class="head"><h3 id="qsTitle">퀴즈</h3><button type="button" data-act="qsClose">닫기</button></div>
+  <span class="lbl" style="margin-top:0">문항 수</span><div class="seg" id="qsN"></div>
+  <span class="lbl">문제 유형</span><div class="seg" id="qsT"></div>
+  <p class="note center" id="qsInfo"></p>
+  <button type="button" class="main" data-act="qsGo">시작</button>
+</div></div>
 <div id="toast"></div>
 <button type="button" id="upd" class="upd" hidden>새 버전이 있습니다 · 눌러서 새로고침</button>
 <input type="file" id="fileWords" accept=".json,application/json" hidden>
 <input type="file" id="fileBackup" accept=".json,application/json" hidden>
 
 <script>
-const APP_VERSION = '26.10.12-2';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.12-3';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -288,11 +295,13 @@ let W = [], byId = {}, S = {};
 let view = 'home', arg = null, sess = null, quiz = null, flipped = false, openWd = {};
 
 /* ── 저장 ── */
-const DEF_SET = { exam: '2026-11-30', newMode: 'day', auto: true, test: { scope: 'learned', days: [], star: 1, type: 'syn', n: 20 } };
+const DEF_SET = { exam: '2026-11-30', newMode: 'day', auto: true, test: { scope: 'learned', days: [], star: 1, type: 'syn', n: 20 },
+  quick: { day: { n: 10, type: 'syn' }, review: { n: 20, type: 'syn' } } };
 function fixState() {
   S.cards = S.cards || {}; S.log = S.log || {}; S.weak = S.weak || {};
   S.set = Object.assign({}, DEF_SET, S.set || {});
   S.set.test = Object.assign({}, DEF_SET.test, S.set.test || {});
+  S.set.quick = Object.assign({}, DEF_SET.quick, S.set.quick || {});
 }
 function loadAll() {
   try { W = JSON.parse(localStorage.getItem(KW)) || []; } catch (e) { W = []; }
@@ -385,7 +394,8 @@ const reviewDays = () => dayList().filter(n => dayStats(n).seen > 0).slice(-5);
 
 /* ── 화면 ── */
 function chrome(back) { $('#back').hidden = !back; }
-function go(v, a) { view = v; arg = a; flipped = false; render(); window.scrollTo(0, 0); }
+function go(v, a) { view = v; arg = a; flipped = false; render(); window.scrollTo(0, 0); syncHistory(); }
+const qLabel = k => { const n = S.set.quick[k].n; return n === 'all' ? '전체' : n + '문항'; };
 function render() {
   if (!W.length) return renderEmpty();
   ({ home: renderHome, study: renderStudy, done: renderDone, quiz: renderQuiz, day: renderDay, weak: renderWeak, test: renderTest })[view]();
@@ -413,7 +423,7 @@ function renderHome() {
     <div class="stats"><div class="stat"><span>복습</span><b>${due}</b></div><div class="stat"><span>신규${d && nw.length ? ' · Day ' + d : ''}</span><b>${nw.length}</b></div></div>
     <div class="bar"><i style="width:${pct}%"></i></div>
     ${left ? '<button type="button" class="main" data-act="start">학습 시작</button>' : '<p class="note center">오늘 분량 끝. 퀴즈로 마무리해요.</p>'}
-    ${qd ? `<button type="button" class="sub" data-act="quizDay" data-d="${qd}">Day ${qd} 퀴즈 10문항</button>` : ''}</div>`;
+    ${qd ? `<button type="button" class="sub" data-act="quizDay" data-d="${qd}">Day ${qd} 퀴즈 ${qLabel('day')}</button>` : ''}</div>`;
   h += '<div class="card"><h3>최근 7일</h3><div class="week">';
   for (let i = 6; i >= 0; i--) {
     const k = addDays(t, -i), x = S.log[k], n = x ? x.rev + x.nw : 0;
@@ -430,7 +440,7 @@ function renderHome() {
   h += `</div></div><div class="card" style="padding-block:4px">
     <div class="item" data-act="test"><div class="t">단어 테스트<small>범위·문제 수·유형을 골라서</small></div></div>
     <div class="item" data-act="weak"><div class="t">취약 단어<small>퀴즈에서 틀리거나 다시 본 단어</small></div><span class="r"><span class="num">${wk}</span>개</span></div>
-    ${rd.length ? `<div class="item" data-act="quizReview"><div class="t">리뷰 테스트<small>최근 5 Day · 20문항</small></div><span class="r num">Day ${rd[0]}${rd.length > 1 ? '-' + rd[rd.length - 1] : ''}</span></div>` : ''}
+    ${rd.length ? `<div class="item" data-act="quizReview"><div class="t">리뷰 테스트<small>최근 5 Day · ${qLabel('review')}</small></div><span class="r num">Day ${rd[0]}${rd.length > 1 ? '-' + rd[rd.length - 1] : ''}</span></div>` : ''}
   </div>`;
   V.innerHTML = h;
 }
@@ -502,7 +512,7 @@ function renderDone() {
   const t = today(), L = S.log[t] || { rev: 0, nw: 0, again: 0 }, d = (S.log[t] && S.log[t].day) || todayDay();
   let h = `<div class="card hero center"><div class="ttl" style="justify-content:center">수고했어요</div><p class="note">${sess && sess.practice
     ? `다시 보기 ${sess.total}개 · 모름 ${sess.again}번` : `오늘 복습 ${L.rev} · 신규 ${L.nw} · 다시 ${L.again}`}</p></div>`;
-  if (d && !(sess && sess.practice)) h += `<button type="button" class="main" data-act="quizDay" data-d="${d}">Day ${d} 퀴즈 10문항</button>`;
+  if (d && !(sess && sess.practice)) h += `<button type="button" class="main" data-act="quizDay" data-d="${d}">Day ${d} 퀴즈 ${qLabel('day')}</button>`;
   h += '<button type="button" class="sub" data-act="home">홈으로</button>';
   V.innerHTML = h;
 }
@@ -601,7 +611,7 @@ function renderDay() {
   let best = null;
   Object.values(S.log).forEach(L => (L.quiz || []).forEach(q => { if (q.t === `Day ${d} 퀴즈`) best = Math.max(best || 0, q.sc); }));
   V.innerHTML = phead('Day ' + d, `${s.seen} / ${s.total} 학습${best != null ? ` · 퀴즈 최고 ${best}/10` : ''}`) +
-    `<div class="stats" style="margin-bottom:12px"><button type="button" class="main" style="margin:0" data-act="quizDay" data-d="${d}">퀴즈 10문항</button>
+    `<div class="stats" style="margin-bottom:12px"><button type="button" class="main" style="margin:0" data-act="quizDay" data-d="${d}">퀴즈 ${qLabel('day')}</button>
     <button type="button" class="sub" style="margin:0" data-act="skim" data-d="${d}">카드로 훑어보기</button></div>
     <div class="card" style="padding-block:4px">${wordRows(ws, true)}</div>`;
 }
@@ -664,7 +674,48 @@ function drawSettings() {
   const ds = dayList();
   $('#dataInfo').textContent = W.length ? `${W.length}단어 · Day ${ds[0]}-${ds[ds.length - 1]}` : '아직 없음';
 }
-function openSettings(on) { $('#settings').hidden = !on; document.body.classList.toggle('modal-open', on); if (on) drawSettings(); }
+function openSettings(on) { $('#settings').hidden = !on; document.body.classList.toggle('modal-open', on); if (on) drawSettings(); syncHistory(); }
+
+/* ── 퀴즈 시작 시트: 문항 수·유형 고르기 (Day 퀴즈·리뷰 테스트, 고른 값은 기억) ── */
+let quick = null;
+function openQuick(kind, d, from) {
+  const days = kind === 'day' ? [d] : reviewDays();
+  quick = { kind, days, from, pool: W.filter(w => days.includes(w.d)), title: kind === 'day' ? `Day ${d} 퀴즈` : '리뷰 테스트' };
+  drawQuick(); $('#qsheet').hidden = false; document.body.classList.add('modal-open'); syncHistory();
+}
+function closeQuick() { $('#qsheet').hidden = true; document.body.classList.remove('modal-open'); render(); syncHistory(); }
+function drawQuick() {
+  const q = S.set.quick[quick.kind], ns = quick.kind === 'day' ? [10, 20, 30, 'all'] : [10, 20, 30, 50, 'all'], ds = quick.days;
+  $('#qsTitle').textContent = quick.title;
+  $('#qsN').innerHTML = ns.map(n => `<button type="button" class="${String(q.n) === String(n) ? 'on' : ''}" data-qn="${n}">${n === 'all' ? '전체' : n}</button>`).join('');
+  $('#qsT').innerHTML = [['syn', '동의어'], ['ko', '뜻'], ['rev', '단어'], ['mix', '섞어서']].map(([v, l]) => `<button type="button" class="${q.type === v ? 'on' : ''}" data-qt="${v}">${l}</button>`).join('');
+  const n = q.n === 'all' ? quick.pool.length : Math.min(q.n, quick.pool.length);
+  $('#qsInfo').innerHTML = `${quick.kind === 'review' ? `Day ${ds[0]}${ds.length > 1 ? '-' + ds[ds.length - 1] : ''} · ` : ''}<b class="num" style="color:var(--fg)">${quick.pool.length}</b>단어 중 <b class="num" style="color:var(--fg)">${n}</b>문제`;
+}
+$('#qsheet').addEventListener('click', e => {
+  if (e.target === e.currentTarget) return closeQuick();
+  const b = e.target.closest('button'); if (!b) return;
+  const q = S.set.quick[quick.kind];
+  if (b.dataset.qn) { q.n = b.dataset.qn === 'all' ? 'all' : +b.dataset.qn; save(); return drawQuick(); }
+  if (b.dataset.qt) { q.type = b.dataset.qt; save(); return drawQuick(); }
+  if (b.dataset.act === 'qsClose') return closeQuick();
+  if (b.dataset.act === 'qsGo') { $('#qsheet').hidden = true; document.body.classList.remove('modal-open'); makeQuiz(quick.pool, q.n, q.type, quick.title, quick.from); }
+});
+
+/* ── 갤럭시 뒤로 가기: 홈이 아니거나 시트가 열려 있으면 기록 한 칸을 잡아 두고, 뒤로 = 앱의 뒤로 버튼 ── */
+let ignorePop = false;
+function syncHistory() {
+  const inner = view !== 'home' || !$('#settings').hidden || !$('#qsheet').hidden, st = history.state && history.state.inner;
+  if (inner && !st) history.pushState({ inner: 1 }, '');
+  else if (!inner && st) { ignorePop = true; history.back(); }
+}
+addEventListener('popstate', () => {
+  if (ignorePop) { ignorePop = false; return; }
+  if (!$('#qsheet').hidden) closeQuick();
+  else if (!$('#settings').hidden) openSettings(false);
+  else if (view !== 'home') $('#back').click();
+  syncHistory();
+});
 
 /* ── 파일 ── */
 function readFile(input, cb) {
@@ -745,8 +796,8 @@ V.addEventListener('click', e => {
   if (a === 'day') { openWd = {}; return go('day', d); }
   if (a === 'weak') { openWd = {}; return go('weak'); }
   if (a === 'test') return go('test');
-  if (a === 'quizDay') return makeQuiz(W.filter(w => w.d === d), 10, 'syn', `Day ${d} 퀴즈`, view === 'day' ? { v: 'day', a: d } : null);
-  if (a === 'quizReview') { const rd = reviewDays(); return makeQuiz(W.filter(w => rd.includes(w.d)), 20, 'syn', '리뷰 테스트'); }
+  if (a === 'quizDay') return openQuick('day', d, view === 'day' ? { v: 'day', a: d } : null);
+  if (a === 'quizReview') return openQuick('review');
   if (a === 'weakTest') return makeQuiz(weakIds().map(id => byId[id]), 20, 'syn', '취약 단어 테스트', { v: 'weak' });
   if (a === 'pick') return pick(+el.dataset.k);
   if (a === 'qnext') { quiz.i++; renderQuiz(); return window.scrollTo(0, 0); }
