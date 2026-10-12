@@ -268,6 +268,9 @@ footer { margin-top:28px; }
   <div class="settings-row col"><div><b>테마 색</b><p id="colorName"></p></div><div class="swatches" id="colorPick"></div></div>
   <div class="settings-row col"><div><b>하루 신규 단어</b><p>복습 카드는 분량과 상관없이 모두 나와요</p></div><div class="seg" id="newMode"></div></div>
   <div class="settings-row"><div><b>시험일</b><p>홈의 D-day 기준</p></div><input type="date" id="exam"></div>
+  <div class="settings-row col"><div><b>발음 목소리</b><p>폰에 깔린 영어 목소리 중 골라요. 프리미엄·향상된 목소리를 받아 두면 훨씬 자연스러워요</p></div>
+    <div style="display:flex;gap:8px"><select id="voiceSel" style="flex:1;min-width:0;padding:9px 10px;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)"></select><button type="button" class="pill" data-act="tryVoice">들어보기</button></div></div>
+  <div class="settings-row"><div><b>말하기 속도</b><p>원어민 속도는 1.0</p></div><div class="seg" id="rateSel" style="width:170px"></div></div>
   <div class="settings-row"><div><b>발음 자동 재생</b><p>카드가 넘어갈 때 단어를 읽어 줘요</p></div><div class="seg" id="autoSay" style="width:110px"></div></div>
   <div class="settings-row"><div><b>단어 데이터</b><p id="dataInfo"></p></div><button type="button" class="pill" data-act="pickWords">불러오기</button></div>
   <div class="settings-row"><div><b>진도 백업</b><p>진도는 이 폰에만 저장돼요</p></div><div class="pills"><button type="button" class="pill" data-act="export">내보내기</button><button type="button" class="pill" data-act="pickBackup">복원</button></div></div>
@@ -285,7 +288,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileBackup" accept=".json,application/json" hidden>
 
 <script>
-const APP_VERSION = '26.10.12-4';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.12-5';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -295,7 +298,7 @@ let W = [], byId = {}, S = {};
 let view = 'home', arg = null, sess = null, quiz = null, flipped = false, openWd = {};
 
 /* ── 저장 ── */
-const DEF_SET = { exam: '2026-11-30', newMode: 'day', auto: true, test: { scope: 'learned', days: [], star: 1, type: 'syn', n: 20 },
+const DEF_SET = { exam: '2026-11-30', newMode: 'day', auto: true, voice: '', rate: 1, test: { scope: 'learned', days: [], star: 1, type: 'syn', n: 20 },
   quick: { day: { n: 10, type: 'syn' }, review: { n: 20, type: 'syn' } } };
 function fixState() {
   S.cards = S.cards || {}; S.log = S.log || {}; S.weak = S.weak || {};
@@ -340,19 +343,24 @@ let toastTimer;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
 
 /* ── 발음 ── */
-let voice = null;
-function pickVoice() {
-  try {
-    const vs = speechSynthesis.getVoices();
-    voice = vs.find(v => v.name === 'Samantha') || vs.find(v => v.lang === 'en-US') || vs.find(v => /^en/.test(v.lang)) || null;
-  } catch (e) {}
+// 폰에 깔린 영어 목소리 중 가장 자연스러운 것: 아이폰 프리미엄 > 향상됨 > 구글(갤럭시) > 기본 사람 목소리. 장난감·옛 합성 목소리는 뺀다
+const TOY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Fred|Good News|Jester|Junior|Kathy|Organ|Superstar|Ralph|Trinoids|Whisper|Zarvox|Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley)\b/;
+function voiceScore(v) {
+  const id = (v.name + ' ' + v.voiceURI).toLowerCase();
+  return (/premium|프리미엄/.test(id) ? 100 : /enhanced|향상/.test(id) ? 80 : /google/.test(id) ? 70 : /neural|natural|online/.test(id) ? 75 : 40)
+    + (v.localService === false ? 5 : 0) + (v.lang === 'en-US' ? 4 : /en[-_]GB/.test(v.lang) ? 2 : 0) + (/samantha|ava|zoe|evan|nathan|allison|susan|tom/.test(id) ? 3 : 0);
 }
-if (window.speechSynthesis) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function voices() {
+  try { return speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang) && !TOY.test(v.name)).sort((a, b) => voiceScore(b) - voiceScore(a)); }
+  catch (e) { return []; }
+}
+function voiceFor() { const vs = voices(); return vs.find(v => v.voiceURI === S.set.voice) || vs[0] || null; }
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => { if (!$('#settings').hidden) drawSettings(); };
 function say(t) {
   try {
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'en-US'; u.rate = 0.9; if (voice) u.voice = voice;
+    const u = new SpeechSynthesisUtterance(t), v = voiceFor();
+    u.lang = v ? v.lang : 'en-US'; u.rate = S.set.rate || 1; if (v) u.voice = v;
     speechSynthesis.speak(u);
   } catch (e) {}
 }
@@ -670,6 +678,10 @@ function drawSettings() {
   const seg = (vals, cur, k) => vals.map(([v, lab]) => `<button type="button" class="${String(cur) === String(v) ? 'on' : ''}" data-set="${k}" data-v="${v}">${lab}</button>`).join('');
   $('#newMode').innerHTML = seg([['day', '1 Day'], ['40', '40'], ['30', '30'], ['20', '20']], S.set.newMode, 'newMode');
   $('#autoSay').innerHTML = seg([['1', '켬'], ['0', '끔']], S.set.auto ? '1' : '0', 'auto');
+  $('#rateSel').innerHTML = seg([['0.8', '0.8'], ['0.9', '0.9'], ['1', '1.0']], String(S.set.rate || 1), 'rate');
+  const vs = voices(), cur = voiceFor();
+  $('#voiceSel').innerHTML = vs.length ? vs.map((v, i) => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? ' selected' : ''}>${esc(v.name)} · ${esc(v.lang)}${i === 0 ? ' (추천)' : ''}</option>`).join('')
+    : '<option>영어 목소리를 찾는 중</option>';
   $('#exam').value = S.set.exam;
   const ds = dayList();
   $('#dataInfo').textContent = W.length ? `${W.length}단어 · Day ${ds[0]}-${ds[ds.length - 1]}` : '아직 없음';
@@ -766,6 +778,7 @@ $('#back').onclick = () => {
 };
 $('#brand').onclick = () => go('home');
 $('#gear').onclick = () => openSettings(true);
+$('#voiceSel').onchange = function () { S.set.voice = this.value; save(); say('exploit'); };
 $('#exam').onchange = function () { if (/^\d{4}-\d\d-\d\d$/.test(this.value)) { S.set.exam = this.value; save(); render(); } };
 $('#settings').addEventListener('click', e => {
   if (e.target === e.currentTarget) return openSettings(false);
@@ -774,6 +787,8 @@ $('#settings').addEventListener('click', e => {
   if (b.dataset.pickcolor) return setColor(b.dataset.pickcolor);
   if (b.dataset.set === 'newMode') { S.set.newMode = b.dataset.v; save(); drawSettings(); return render(); }
   if (b.dataset.set === 'auto') { S.set.auto = b.dataset.v === '1'; save(); return drawSettings(); }
+  if (b.dataset.set === 'rate') { S.set.rate = +b.dataset.v; save(); drawSettings(); return say('Many famous writers have kept diaries to help them recall the past.'); }
+  if (b.dataset.act === 'tryVoice') return say('Many famous writers have kept diaries to help them recall the past.');
   const a = b.dataset.act;
   if (a === 'closeSet') openSettings(false);
   else if (a === 'pickWords') $('#fileWords').click();
