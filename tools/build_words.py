@@ -38,7 +38,7 @@ FIX = {
     'suosiStence': 'subsistence', 'surtace': 'surface', 'swel': 'swell', 'switly': 'swiftly', 'teature': 'feature',
     'thett': 'theft', 'tiberal': 'liberal', 'tikely': 'likely', 'toresee': 'foresee', 'tully': 'fully',
     'udicrous': 'ludicrous', 'uimited': 'limited', 'under uine': 'underline', 'uiving': 'living', 'ukely': 'likely',
-    'unskilltul': 'unskillful', 'z00': 'zoo', 'periormo': 'perform이', 'Lifelike': 'lifelike',
+    'unskilltul': 'unskillful', 'z00': 'zoo', 'periormo': 'perform이', 'personis': "person's", 'Lifelike': 'lifelike',
 }
 HEAD_FIX = {'atthe urging of': 'at the urging of', 'a rigidly': 'rigidly'}
 # 포인트 글의 '의' 가 ol / o 로 읽힌 것
@@ -49,6 +49,19 @@ def fix(s):
     for a, b in FIX.items():
         s = re.sub(r'(?<![A-Za-z])' + re.escape(a) + r'(?![A-Za-z])', b, s)
     return PARTICLE.sub(lambda m: (m.group(1) or m.group(2)) + '의', s)
+
+
+ABBR = {'Jr', 'Mr', 'Mrs', 'Ms', 'Dr', 'St', 'Mt', 'vs', 'etc', 'a.m', 'p.m', 'U.S', 'e.g', 'i.e'}
+
+
+def fix_sentence(s):
+    """예문을 자연스럽게 읽히게: OCR 이 쉼표를 마침표로 읽은 곳, 첫 글자, 끝 문장부호, 'lt'·'l|' 같은 잡음"""
+    s = re.sub(r'([\w.]+)\. (?=[a-z])', lambda m: m.group(0) if m.group(1) in ABBR else m.group(1) + ', ', s)
+    s = re.sub(r'^(?:adj|adv|n|v)\s+(?=[A-Z])', '', s)
+    s = re.sub(r'^lt\b', 'It', s)
+    s = s.replace('World War l|', 'World War II').replace('World War |', 'World War I')
+    s = s[:1].upper() + s[1:]
+    return s if re.search(r'[.!?"\']$', s) else s + '.'
 
 
 def vault_seed():
@@ -82,7 +95,7 @@ for w in words:
         s['syn'] = [fix(x) for x in s['syn']]
         s['ko'] = re.sub(r'\s*:\s*', '; ', re.sub(r'\.\s', ', ', s.get('ko', ''))).strip(' .')  # OCR 이 쉼표·쌍반점을 . : 로 읽음
     for e in w['ex']:
-        e['en'] = fix(e['en'])
+        e['en'] = fix_sentence(fix(e['en']))
     w['der'] = [fix(x) for x in w['der']]
     w['pt'] = fix(w['pt'])
     sd = seed.get((w['d'], w['w']))
