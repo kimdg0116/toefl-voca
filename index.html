@@ -302,7 +302,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.14-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.14-2';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -782,7 +782,7 @@ function drawSettings() {
   $('#exam').value = S.set.exam;
   const hm = t => { const d = new Date(t); return `${ymd(d) === today() ? '' : `${d.getMonth() + 1}/${d.getDate()} `}${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
   $('#syncInfo').textContent = !SY.code ? (SY.err === 'code' ? '연결 코드가 맞지 않아요' : '연결 코드를 넣으면 폰과 맥이 같은 진도를 써요')
-    : syncing ? '맞추는 중' : SY.err ? '맞추지 못했어요 · 인터넷을 확인하세요' : SY.at ? '연결됨 · ' + hm(SY.at) + ' 맞춤' : '연결됨';
+    : syncing ? '맞추는 중' : SY.err ? '맞추지 못했어요 · 인터넷을 확인하세요' : SY.at ? `연결됨 · 코드 ${SY.code} · ${hm(SY.at)} 맞춤` : '연결됨 · 코드 ' + SY.code;   // 코드는 다른 기기를 연결할 때 보고 넣는다
   $('#syncBtn').textContent = SY.code ? '지금 맞추기' : '연결';
   const ds = dayList();
   $('#dataInfo').textContent = W.length ? `${W.length}단어 · Day ${ds[0]}-${ds[ds.length - 1]}` : '아직 없음';
