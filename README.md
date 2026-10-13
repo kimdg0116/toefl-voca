@@ -4,7 +4,24 @@
 옵시디언 `04 Life/토플/단어/` 카드 체계(Day 덱, 다시·어려움·좋음·쉬움, 동의어 퀴즈)를 그대로 옮겼다.
 
 - 앱: https://kimdg0116.github.io/toefl-voca/ → 사파리에서 공유 → 홈 화면에 추가
-- **단어 데이터는 저장소에 없다** (교재 저작권). `data/toefl-words.json` 을 AirDrop 으로 폰에 보내고 앱 설정에서 불러온다. 진도는 폰 localStorage 에만 저장 → 설정 > 진도 백업으로 가끔 내보내기.
+- **단어 데이터는 저장소에 없다** (교재 저작권). `data/toefl-words.json` 을 AirDrop 으로 폰에 보내고 앱 설정에서 불러온다. 진도는 기기 안(localStorage)에 저장하고, 설정 > 기기 연동(연결 코드 6자리)으로 폰·맥이 같은 진도를 쓴다.
+
+## 맥 앱 (토플 단어.app)
+
+`./mac/make_app.sh` → 이 폴더에 `토플 단어.app` (Dock 에 끌어다 두기). 폰과 같은 GitHub Pages 화면을 WKWebView 로 연다.
+단어 파일과 연결 코드는 앱 안에 넣어 두었다가 처음 열 때 넣는다 (설정할 것 없음). 창 한 개, Dock 을 다시 누르면 있던 창이 앞으로.
+키보드: 스페이스·엔터 = 뜻 보기·좋음·다음, 1-4 = 화면 왼쪽부터 버튼, P = 발음, Esc = 뒤로. ⌘+ / ⌘- 글자 크기.
+
+## 기기 연동 (sync/)
+
+`sync/Code.js` = Apps Script 웹 앱. 진도(카드·날짜별 기록·취약 단어)만 Script Properties 에 보관하고, 합치기는 앱(`merge`)이 한다.
+카드는 더 많이 본 쪽, 기록은 큰 값, 취약 단어는 나중에 바뀐 쪽. 설정은 기기마다 따로. 연결 코드는 `sync/Secret.js` (git 제외).
+
+```bash
+cd sync && ~/Desktop/app/dosimetrist-calendar-server/tools/node_modules/.bin/clasp push -f
+~/Desktop/app/dosimetrist-calendar-server/tools/node_modules/.bin/clasp redeploy AKfycbxccqOGEEhECaEQHd3x51VZJ6TJnHLcANqSNr1RYEiaXGUpZGG5hwtd_ndgjKnZ6oal
+node tools/test_merge.mjs   # 합치기 확인
+```
 
 ## 단어 파일 다시 만들기
 

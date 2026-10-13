@@ -210,6 +210,17 @@ label, .lbl { display:block; margin:14px 0 6px; font-size:13px; font-weight:600;
 .opt { display:block; width:100%; margin-bottom:8px; padding:13px 14px; text-align:left; font-size:16px; font-weight:600; border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--fg); }
 .opt.ok { border-color:var(--acc); background:var(--soft); color:var(--acc); font-weight:800; }
 .opt.no { border-color:var(--red); background:color-mix(in srgb, var(--red) 10%, var(--card)); color:var(--red); }
+/* 키보드가 있는 컴퓨터(맥 앱)에서만: 버튼에 번호, 카드에 스페이스 안내 */
+.kb { display:none; }
+@media (hover:hover) and (pointer:fine) {
+  .kb { display:block; }
+  #view { counter-reset:k; }
+  .rate { counter-reset:k; }
+  .rate:not(.one) button, .opt { position:relative; }
+  .rate:not(.one) button::before, .opt::before { counter-increment:k; content:counter(k); position:absolute; top:5px; left:8px; font:500 11px var(--num); opacity:.5; }
+  .opt { padding-left:28px; }
+  .front .hint::after { content:' · 스페이스'; }
+}
 .score { font-family:var(--num); font-size:52px; font-weight:600; line-height:1.1; color:var(--deep); }
 .wd { padding:11px 0; border-top:1px solid var(--line); cursor:pointer; }
 .wd:first-child { border-top:0; }
@@ -260,7 +271,7 @@ footer { margin-top:28px; }
   <button type="button" class="icon-btn" id="gear" aria-label="설정 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
 </div>
 <main id="view"></main>
-<footer><p class="ver" id="ver"></p><p class="ver">© Dongkyu Kim</p></footer>
+<footer><p class="ver kb">스페이스 뜻 보기·다음 · 1-4 버튼 · P 발음 · Esc 뒤로</p><p class="ver" id="ver"></p><p class="ver">© Dongkyu Kim</p></footer>
 
 <div id="settings" class="panel" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden><div class="sheet">
   <div class="head"><h3 id="setTitle">설정</h3><button type="button" data-act="closeSet">닫기</button></div>
@@ -274,7 +285,8 @@ footer { margin-top:28px; }
   <div class="settings-row"><div><b>말하기 속도</b><p>원어민 속도는 1.0</p></div><div class="seg" id="rateSel" style="width:170px"></div></div>
   <div class="settings-row"><div><b>발음 자동 재생</b><p>카드가 넘어갈 때 단어를 읽어 줘요</p></div><div class="seg" id="autoSay" style="width:110px"></div></div>
   <div class="settings-row"><div><b>단어 데이터</b><p id="dataInfo"></p></div><button type="button" class="pill" data-act="pickWords">불러오기</button></div>
-  <div class="settings-row"><div><b>진도 백업</b><p>진도는 이 폰에만 저장돼요</p></div><div class="pills"><button type="button" class="pill" data-act="export">내보내기</button><button type="button" class="pill" data-act="pickBackup">복원</button></div></div>
+  <div class="settings-row"><div><b>기기 연동</b><p id="syncInfo"></p></div><button type="button" class="pill" data-act="sync" id="syncBtn">연결</button></div>
+  <div class="settings-row"><div><b>진도 백업</b><p>파일로 따로 보관해요</p></div><div class="pills"><button type="button" class="pill" data-act="export">내보내기</button><button type="button" class="pill" data-act="pickBackup">복원</button></div></div>
 </div></div>
 <div id="qsheet" class="panel" role="dialog" aria-modal="true" aria-labelledby="qsTitle" hidden><div class="sheet">
   <div class="head"><h3 id="qsTitle">퀴즈</h3><button type="button" data-act="qsClose">닫기</button></div>
@@ -290,7 +302,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.12-7';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.14-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -316,6 +328,54 @@ function loadAll() {
 function save() {
   try { localStorage.setItem(KS, JSON.stringify(S)); }
   catch (e) { toast('저장하지 못했어요. 폰 저장 공간을 확인하세요'); }
+  if (SY.code) { edits++; SY.dirty = true; saveSY(); clearTimeout(syncTimer); syncTimer = setTimeout(sync, 3000); }
+}
+
+/* ── 기기 연동: 폰·맥이 같은 진도를 쓴다. 서버(sync/Code.js)는 보관만, 합치기는 여기서 ── */
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbxccqOGEEhECaEQHd3x51VZJ6TJnHLcANqSNr1RYEiaXGUpZGG5hwtd_ndgjKnZ6oal/exec';
+const KY = 'tv.sync';                                                  // { code, rev, dirty, at, err }
+let SY = {}, edits = 0, syncing = null, syncTimer;
+try { SY = JSON.parse(localStorage.getItem(KY)) || {}; } catch (e) {}
+const saveSY = () => { try { localStorage.setItem(KY, JSON.stringify(SY)); } catch (e) {} };
+const prog = x => ({ cards: x.cards || {}, log: x.log || {}, weak: x.weak || {}, wu: x.wu || 0 });   // 연동하는 것. 설정(S.set)은 기기마다 따로
+const canon = o => JSON.stringify(o, (k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(x => [x, v[x]])) : v);
+// a = 이 기기, b = 서버. 카드는 더 많이 본 쪽(reps), 같으면 다음 복습일이 늦은 쪽. 날짜별 기록은 큰 값.
+// 취약 단어는 나중에 바뀐 쪽 (wu 가 같으면 = 둘 다 연동 전이면 합친다)
+function merge(a, b) {
+  const m = Object.assign({}, a, { cards: Object.assign({}, a.cards), log: Object.assign({}, a.log) });
+  for (const id in b.cards || {}) { const x = a.cards[id], y = b.cards[id]; if (!x || y.reps > x.reps || (y.reps === x.reps && y.due > x.due)) m.cards[id] = y; }
+  for (const d in b.log || {}) {
+    const x = a.log[d], y = b.log[d];
+    m.log[d] = !x ? y : { rev: Math.max(x.rev, y.rev), nw: Math.max(x.nw, y.nw), again: Math.max(x.again, y.again), day: x.day || y.day,
+      quiz: (y.quiz || []).length > (x.quiz || []).length ? y.quiz : x.quiz || [] };
+  }
+  const aw = a.wu || 0, bw = b.wu || 0;
+  if (bw > aw) { m.weak = b.weak || {}; m.wu = bw; }
+  else if (bw === aw) { m.weak = Object.assign({}, a.weak); for (const id in b.weak || {}) m.weak[id] = Math.max(b.weak[id], a.weak[id] || 0); }
+  return m;
+}
+// 보낼 게 있으면(dirty) 마지막으로 맞춘 rev 와 함께 보낸다. 그사이 다른 기기가 올렸으면 서버 진도를 받아 합친 뒤 다시 보낸다
+async function syncNow() {
+  for (let i = 0; i < 4; i++) {
+    const n = edits, push = SY.dirty, body = { code: SY.code, base: SY.rev || '' };
+    if (push) body.state = prog(S);
+    const r = await (await fetch(SYNC_URL, { method: 'POST', body: JSON.stringify(body) })).json();
+    if (r.err === 'code') { SY = { err: 'code' }; throw new Error('code'); }
+    if (r.err || typeof r.rev !== 'string') throw new Error('net');
+    if ('state' in r) {
+      if (r.state) { S = merge(S, r.state); fixState(); }
+      SY.dirty = !r.state || canon(prog(S)) !== canon(prog(r.state));
+      try { localStorage.setItem(KS, JSON.stringify(S)); } catch (e) {}
+      if (view !== 'study' && view !== 'quiz') render();
+    } else if (push && n === edits) SY.dirty = false;
+    SY.rev = r.rev; SY.at = Date.now(); saveSY();
+    if (!SY.dirty) return;
+  }
+}
+function sync() {
+  if (!SY.code) return Promise.resolve();
+  return syncing || (syncing = syncNow().then(() => { SY.err = ''; }, e => { SY.err = e.message === 'code' ? 'code' : 'net'; })
+    .finally(() => { syncing = null; saveSY(); if (!$('#settings').hidden) drawSettings(); }));
 }
 
 /* ── 날짜 ── */
@@ -426,7 +486,7 @@ function streak() {
   return n;
 }
 const weakIds = () => Object.keys(S.weak).filter(id => S.weak[id] > 0 && byId[id]).sort((a, b) => S.weak[b] - S.weak[a]);
-function addWeak(id, n) { S.weak[id] = Math.max(0, (S.weak[id] || 0) + n); if (!S.weak[id]) delete S.weak[id]; }
+function addWeak(id, n) { S.weak[id] = Math.max(0, (S.weak[id] || 0) + n); if (!S.weak[id]) delete S.weak[id]; S.wu = Date.now(); }
 const reviewDays = () => dayList().filter(n => dayStats(n).seen > 0).slice(-5);
 
 /* ── 화면 ── */
@@ -720,6 +780,10 @@ function drawSettings() {
   $('#voiceSel').innerHTML = vs.length ? vs.map((v, i) => `<option value="${esc(v.voiceURI)}"${cur && v.voiceURI === cur.voiceURI ? ' selected' : ''}>${esc(v.name)} · ${esc(v.lang)}${i === 0 ? ' (추천)' : ''}</option>`).join('')
     : '<option>영어 목소리를 찾는 중</option>';
   $('#exam').value = S.set.exam;
+  const hm = t => { const d = new Date(t); return `${ymd(d) === today() ? '' : `${d.getMonth() + 1}/${d.getDate()} `}${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  $('#syncInfo').textContent = !SY.code ? (SY.err === 'code' ? '연결 코드가 맞지 않아요' : '연결 코드를 넣으면 폰과 맥이 같은 진도를 써요')
+    : syncing ? '맞추는 중' : SY.err ? '맞추지 못했어요 · 인터넷을 확인하세요' : SY.at ? '연결됨 · ' + hm(SY.at) + ' 맞춤' : '연결됨';
+  $('#syncBtn').textContent = SY.code ? '지금 맞추기' : '연결';
   const ds = dayList();
   $('#dataInfo').textContent = W.length ? `${W.length}단어 · Day ${ds[0]}-${ds[ds.length - 1]}` : '아직 없음';
 }
@@ -848,6 +912,16 @@ $('#settings').addEventListener('click', e => {
   else if (a === 'pickWords') $('#fileWords').click();
   else if (a === 'pickBackup') $('#fileBackup').click();
   else if (a === 'export') exportBackup();
+  else if (a === 'sync') {
+    if (!SY.code) {
+      const c = (prompt('연결 코드 6자리') || '').replace(/\D/g, '');
+      if (!c) return;
+      try { localStorage.setItem('tv.state.before-sync', JSON.stringify(S)); } catch (e) {}   // 처음 합치기 전 진도를 한 벌 남겨 둔다
+      SY = { code: c, rev: '', dirty: true }; saveSY();
+    }
+    const p = sync(); drawSettings();
+    p.then(() => toast(SY.err === 'code' ? '연결 코드가 맞지 않아요' : SY.err ? '맞추지 못했어요. 인터넷을 확인하세요' : `맞췄어요 · 카드 ${Object.keys(S.cards).length}개`));
+  }
 });
 V.addEventListener('click', e => {
   const ex = e.target.closest('[data-say]');
@@ -888,14 +962,31 @@ V.addEventListener('click', e => {
   }
 });
 
-/* 날짜가 바뀐 채로 앱을 다시 열면 홈을 새로 그린다 */
+/* ── 키보드 (맥 앱): 스페이스·엔터 = 뜻 보기·좋음·다음·시작, 1-9 = 화면 왼쪽(위)부터 버튼, P = 발음, Esc = 뒤로 ── */
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  const sheet = !$('#qsheet').hidden ? 'q' : !$('#settings').hidden ? 's' : '';
+  if (e.key === 'Escape') { if (sheet === 'q') closeQuick(); else if (sheet === 's') openSettings(false); else if (view !== 'home') $('#back').click(); return; }
+  const go = e.key === ' ' || e.key === 'Enter', n = /^[1-9]$/.test(e.key) ? +e.key : 0, p = e.key.toLowerCase() === 'p';
+  if (sheet === 's' || !(go || n || p)) return;
+  const b = sheet === 'q' ? (go ? $('#qsheet [data-act=qsGo]') : null)
+    : go ? V.querySelector('.rate .go, [data-act=qnext], button.main[data-act]')
+    : n ? V.querySelectorAll('.rate button, .opt')[n - 1]
+    : V.querySelector('[data-act=say], [data-act=sayW]');
+  if (!b) return;
+  e.preventDefault(); b.click();
+});
+
+/* 날짜가 바뀐 채로 앱을 다시 열면 홈을 새로 그린다. 앱으로 돌아오면 다른 기기 진도를 받고, 떠날 때 못 보낸 게 있으면 보낸다 */
 let lastDay = today();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && today() !== lastDay) { lastDay = today(); if (view === 'home' || view === 'done') go('home'); }
+  if (document.visibilityState === 'visible' || SY.dirty) sync();
 });
+addEventListener('focus', () => sync());
 
 setTheme(theme); setColor(color);
-loadAll(); render();
+loadAll(); render(); sync();
 
 // ── 새 버전 안내: version.json 과 비교해서 다르면 버튼. 누르면 오프라인 보관본을 비우고 새로 받는다 ──
 (() => {
