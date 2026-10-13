@@ -35,7 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
     func seedScript() -> String {
         var js = ""
         if let u = Bundle.main.url(forResource: "toefl-words", withExtension: "json"), let s = try? String(contentsOf: u, encoding: .utf8) {
-            js += "if (!localStorage.getItem('tv.words')) localStorage.setItem('tv.words', JSON.stringify(\(s)));\n"
+            js += "if (!(localStorage.getItem('tv.words') || '').startsWith('[')) { const j = \(s); localStorage.setItem('tv.words', JSON.stringify(Array.isArray(j) ? j : j.words)); }\n"
         }
         if let u = Bundle.main.url(forResource: "sync-code", withExtension: "txt"),
            let c = try? String(contentsOf: u, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !c.isEmpty {
