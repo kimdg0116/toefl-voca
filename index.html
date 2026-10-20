@@ -302,7 +302,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.20-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.20-2';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -320,8 +320,72 @@ function fixState() {
   S.set.test = Object.assign({}, DEF_SET.test, S.set.test || {});
   S.set.quick = Object.assign({}, DEF_SET.quick, S.set.quick || {});
 }
+// 원본 교재와 대조한 뜻 OCR 교정. 이미 불러온 단어에도 적용한다.
+const WORD_KO_FIX = {
+  "1-45": ["확교한", "확고한"],
+  "2-29": ["등이)나다", "등이) 나다"],
+  "2-37": ["쓸모없게 된 쓰이지 않는", "쓸모없게 된, 쓰이지 않는"],
+  "3-51": ["패바", "패배"],
+  "4-8": ["주정의", "추정의"],
+  "4-11": ["비씬", "비싼"],
+  "4-26": ["대규모으", "대규모의"],
+  "5-24": ["악화시키디", "악화시키다"],
+  "5-28": ["뛰어닌", "뛰어난"],
+  "6-28": ["과롭히다", "괴롭히다"],
+  "6-45": ["(영향을 미쳐 형성하다", "(영향을 미쳐) 형성하다"],
+  "7-16": ["단명하는 덧없는", "단명하는, 덧없는"],
+  "7-45": ["자극하디", "자극하다"],
+  "7-53": ["겪게 하디", "겪게 하다"],
+  "8-5": ["(취미 •의견 등이 폭넓은", "(취미·의견 등이) 폭넓은"],
+  "8-21": ["몰릭", "몰락"],
+  "8-46": ["흥내", "흉내"],
+  "9-30": ["억제하디", "억제하다"],
+  "10-3": ["위독한 위험한", "위독한, 위험한"],
+  "10-7": ["탓(덕으로", "탓(덕)으로"],
+  "10-57": ["명백힌", "명백한"],
+  "14-41": ["책인", "책임"],
+  "14-59": ["간신히~하다", "간신히 ~하다"],
+  "15-49": ["동일힌", "동일한"],
+  "16-38": ["올아가다", "몰아가다"],
+  "18-9": ["소멸시키디", "소멸시키다"],
+  "21-3": ["엄청닌", "엄청난"],
+  "21-12": ["밀집한 뻑빽한", "밀집한, 빽빽한"],
+  "22-45": ["이해하디", "이해하다"],
+  "23-53": ["방법, 방식;", "방법, 방식"],
+  "24-9": ["걱정시키디", "걱정시키다"],
+  "24-23": ["벗어닌", "벗어난"],
+  "24-46": ["인재력의", "인지력의"],
+  "25-15": ["(유리·액체 등이 불투명한", "(유리·액체 등이) 불투명한"],
+  "25-30": ["보여주디", "보여주다"],
+  "26-15": ["속이디", "속이다"],
+  "26-23": ["(습관 등이 깊이 배어든", "(습관 등이) 깊이 배어든"],
+  "26-36": ["(집•땅 등이 비어 있는", "(집·땅 등이) 비어 있는"],
+  "26-38": ["내리디", "내리다"],
+  "27-22": ["일으키디", "일으키다"],
+  "27-28": ["조사하디", "조사하다"],
+  "27-30": ["유익힌", "유익한"],
+  "29-12": ["빽빽힌", "빽빽한"],
+  "29-23": ["사용하디", "사용하다"],
+  "29-27": ["장식(물", "장식(물)"],
+  "30-5": ["변동하디", "변동하다"],
+  "30-49": ["좁은, 존", "좁은, 죈"]
+};
+function correctWords(words) {
+  let changed = false;
+  words.forEach(w => {
+    const pair = WORD_KO_FIX[w.id];
+    if (pair) {
+      const sense = w.sen.find(s => s.ko && s.ko !== pair[1] && s.ko.includes(pair[0]));
+      if (sense) { sense.ko = sense.ko.replace(pair[0], pair[1]); changed = true; }
+    }
+    if (w.id === '29-41' && w.w === 'quality') { w.w = 'qualify'; changed = true; }
+    w.sen.forEach(s => { if (s.ko && s.ko.includes('•')) { s.ko = s.ko.replace(/\s*•\s*/g, '·'); changed = true; } });   // OCR 이 가운뎃점을 •(띄어쓰기 섞임)로 읽었다
+  });
+  return changed;
+}
 function loadAll() {
   try { W = JSON.parse(localStorage.getItem(KW)) || []; } catch (e) { W = []; }
+  if (correctWords(W)) { try { localStorage.setItem(KW, JSON.stringify(W)); } catch (e) {} }
   try { S = JSON.parse(localStorage.getItem(KS)) || {}; } catch (e) { S = {}; }
   fixState(); byId = Object.fromEntries(W.map(w => [w.id, w]));
 }
@@ -851,6 +915,7 @@ $('#fileWords').onchange = function () {
     const ws = Array.isArray(j) ? j : j && j.words;
     const bad = !Array.isArray(ws) || !ws.length || ws.some(w => !w || typeof w.id !== 'string' || typeof w.w !== 'string' || typeof w.d !== 'number' || !Array.isArray(w.sen) || !Array.isArray(w.ex));
     if (bad) return toast('단어 파일 형식이 아니에요. toefl-words.json 을 골라 주세요');
+    correctWords(ws);
     let seeded = 0;
     ws.forEach(w => { if (w.sr && !S.cards[w.id]) { S.cards[w.id] = w.sr; seeded++; } delete w.sr; w.der = w.der || []; w.pt = w.pt || ''; });
     try { localStorage.setItem(KW, JSON.stringify(ws)); } catch (e) { return toast('폰 저장 공간이 부족해서 저장하지 못했어요'); }
