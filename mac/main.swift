@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
         web.pageZoom = CGFloat(UserDefaults.standard.object(forKey: "zoom") as? Double ?? 1)
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 820),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false  // 닫은 창을 Dock에서 다시 열 때 재사용
         window.title = "TOEFL VOCA"
         window.minSize = NSSize(width: 360, height: 520)
         window.contentView = web
@@ -123,4 +124,5 @@ let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
 app.setActivationPolicy(.regular)
-app.run()
+// NSApplication.delegate는 앱 대표 객체의 수명을 보장하지 않는다. 이벤트 루프가 끝날 때까지 유지한다.
+withExtendedLifetime(delegate) { app.run() }
