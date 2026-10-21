@@ -302,7 +302,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.20-2';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.21-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -577,14 +577,17 @@ function renderHome() {
   const dd = diffDays(t, S.set.exam), done = L.rev + L.nw, left = due + nw.length;
   const pct = done + left ? Math.round(done / (done + left) * 100) : 0;
   const qd = (S.log[t] && S.log[t].day) || d;
-  let h = `<div class="card hero"><div class="ttl">오늘</div>
+  // 오늘 몫을 다 했어도 밀린 Day 를 따라잡거나 앞서 갈 수 있게. 날짜가 바뀌기 전에 끝내지 못한 Day 가 그 날짜 몫을 다 차지해 버리기 때문
+  const nx = !left && unseen()[0];
+  let h =`<div class="card hero"><div class="ttl">오늘</div>
     <div class="dday"><div><div class="big">${dd >= 0 ? 'D-' + dd : 'D+' + (-dd)}</div><span class="num" style="font-size:13px;color:var(--mute)">${esc(S.set.exam.replace(/-/g, '.'))}</span></div>
     <div class="side">연속<b>${streak()}일</b></div></div></div>`;
   h += `<div class="card"><h3>오늘 할 일 <span class="num" style="float:right">${done} 완료</span></h3>
     <div class="stats"><div class="stat"><span>복습</span><b>${due}</b></div><div class="stat"><span>신규${d && nw.length ? ' · Day ' + d : ''}</span><b>${nw.length}</b></div></div>
     <div class="bar"><i style="width:${pct}%"></i></div>
     ${left ? '<button type="button" class="main" data-act="start">학습 시작</button>' : '<p class="note center">오늘 분량 끝. 퀴즈로 마무리해요.</p>'}
-    ${qd ? `<button type="button" class="sub" data-act="quizDay" data-d="${qd}">Day ${qd} 퀴즈 ${qLabel('day')}</button>` : ''}</div>`;
+    ${qd ? `<button type="button" class="sub" data-act="quizDay" data-d="${qd}">Day ${qd} 퀴즈 ${qLabel('day')}</button>` : ''}
+    ${nx ? `<button type="button" class="sub" data-act="nextDay" data-d="${nx.d}">다음 Day ${nx.d} 시작</button>` : ''}</div>`;
   h += '<div class="card"><h3>최근 7일</h3><div class="week">';
   for (let i = 6; i >= 0; i--) {
     const k = addDays(t, -i), x = S.log[k], n = x ? x.rev + x.nw : 0;
@@ -1001,6 +1004,7 @@ V.addEventListener('click', e => {
   const a = el.dataset.act, d = +el.dataset.d, t = S.set.test;
   if (a === 'noop') return;
   if (a === 'start') return startSession(shuffle(dueIds().concat(newIds())));
+  if (a === 'nextDay') return startSession(shuffle(unseen().filter(w => w.d === d).map(w => w.id)));   // rate() 가 오늘의 Day 를 이 Day 로 바꿔서, 중간에 멈춰도 홈의 학습 시작으로 이어진다
   if (a === 'flip') { flipped = true; renderStudy(); return window.scrollTo(0, 0); }
   if (a === 'say') { e.stopPropagation(); const w = cur(); if (w) play('w:' + w.id, w.w); return; }
   if (a === 'sayW') return play('w:' + el.dataset.id, el.dataset.w);
