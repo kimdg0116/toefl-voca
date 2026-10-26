@@ -4,6 +4,7 @@
   1. tools/ocr.swift 로 PDF 페이지 OCR -> <work>/pg/pNNN.tsv  (README 참고)
   2. python3 tools/build_words.py <work 폴더>
 옵시디언 `토플 단어 Day NN.md` 의 복습 기록(<!--SR:...-->)과 발음기호를 같은 단어에 이어 붙인다.
+Day 03~30 발음기호는 OCR 이 못 읽어서 교재 페이지를 보고 옮겨 적은 `data/toefl-phonetics.tsv` (id<TAB>[발음], git 제외) 에서 넣는다.
 """
 import json, os, re, sys
 
@@ -11,6 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = sys.argv[1] if len(sys.argv) > 1 else '.'
 VAULT_DAYS = os.path.expanduser('~/Desktop/Obsidian_Dongkyu/04 Life/토플/단어')
 OUT = os.path.join(HERE, '..', 'data', 'toefl-words.json')
+PHON = os.path.join(HERE, '..', 'data', 'toefl-phonetics.tsv')
 
 sys.path.insert(0, HERE)
 os.chdir(WORK)
@@ -108,6 +110,13 @@ for w in words:
 
 # 아래 단어 목록에서 'up' 이 빠져 해석이 앞 단어에 몰린 페이지 (p297)
 by = {w['id']: w for w in words}
+for line in open(PHON, encoding='utf-8'):   # 교재에서 옮긴 발음기호 (옵시디언 Day 01 exploit 의 어긋난 강세도 여기서 고친다)
+    wid, ph = line.rstrip('\n').split('\t')
+    by[wid]['ph'] = ph
+for w in words:
+    if w.get('ph'):
+        w['ph'] = w['ph'].replace(':', 'ː')   # 옵시디언 노트는 길이 기호를 : 로 적었다
+
 # 교재 원본과 대조한 한국어 뜻 OCR 교정. 앱의 WORD_KO_FIX 와 같은 목록이다.
 KO_FIX = {
     '1-45': ('확교한', '확고한'),

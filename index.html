@@ -173,7 +173,7 @@ label, .lbl { display:block; margin:14px 0 6px; font-size:13px; font-weight:600;
 /* 카드 앞면·뒷면 */
 .front { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:46vh; text-align:center; cursor:pointer; }
 .front .w { font-size:36px; font-weight:800; letter-spacing:-.02em; line-height:1.15; overflow-wrap:anywhere; }
-.front .ph { font-size:16px; color:var(--mute); }
+.front .ph { font-size:16px; color:var(--mute); font-family:system-ui, -apple-system, Roboto, sans-serif; }   /* SUIT 에 없는 ə ː 가 한글 글꼴로 넓게 그려진다 */
 .front .hint { margin-top:6px; font-size:13px; font-weight:600; color:var(--mute); }
 .stars { font-family:var(--num); font-size:15px; font-weight:600; letter-spacing:.15em; color:var(--orange); }
 .spk { width:46px; height:46px; display:grid; place-items:center; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--card); color:var(--acc); }
@@ -302,7 +302,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.21-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.27-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
