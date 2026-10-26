@@ -173,7 +173,7 @@ label, .lbl { display:block; margin:14px 0 6px; font-size:13px; font-weight:600;
 /* 카드 앞면·뒷면 */
 .front { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:46vh; text-align:center; cursor:pointer; }
 .front .w { font-size:36px; font-weight:800; letter-spacing:-.02em; line-height:1.15; overflow-wrap:anywhere; }
-.front .ph { font-size:16px; color:var(--mute); font-family:system-ui, -apple-system, Roboto, sans-serif; }   /* SUIT 에 없는 ə ː 가 한글 글꼴로 넓게 그려진다 */
+.ph { font-size:16px; font-weight:400; letter-spacing:0; color:var(--mute); font-family:system-ui, -apple-system, Roboto, sans-serif; }   /* SUIT 에 없는 ə ː 가 한글 글꼴로 넓게 그려진다 */
 .front .hint { margin-top:6px; font-size:13px; font-weight:600; color:var(--mute); }
 .stars { font-family:var(--num); font-size:15px; font-weight:600; letter-spacing:.15em; color:var(--orange); }
 .spk { width:46px; height:46px; display:grid; place-items:center; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--card); color:var(--acc); }
@@ -181,6 +181,7 @@ label, .lbl { display:block; margin:14px 0 6px; font-size:13px; font-weight:600;
 .spk.sm { width:36px; height:36px; } .spk.sm svg { width:17px; height:17px; }
 .whead { display:flex; align-items:center; gap:10px; margin-bottom:4px; }
 .whead .w { flex:1; min-width:0; font-size:26px; font-weight:800; letter-spacing:-.02em; overflow-wrap:anywhere; }
+.whead .ph { display:block; margin-top:2px; font-size:14px; }
 .sense { padding:12px 0; border-top:1px solid var(--line); }
 .sense:first-of-type { border-top:0; padding-top:6px; }
 .pos { margin-right:5px; font-size:13px; font-weight:600; color:var(--mute); }
@@ -302,7 +303,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.27-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.10.27-2';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
@@ -651,7 +652,7 @@ function renderStudy() {
       <button type="button" class="spk" data-act="say" aria-label="발음 듣기">${SPK}</button><div class="hint">카드를 누르면 뜻이 보여요</div></div></div>
       <div class="rate one"><button type="button" class="go" data-act="flip" style="padding:14px 0">뜻 보기</button></div>`;
   } else {
-    h += `<div class="card"><div class="whead"><span class="w">${esc(w.w)}</span>${stars(w.s)}<button type="button" class="spk sm" data-act="say" aria-label="발음 듣기">${SPK}</button></div>${backHtml(w)}</div>`;
+    h += `<div class="card"><div class="whead"><span class="w">${esc(w.w)}${w.ph ? `<span class="ph">${esc(w.ph)}</span>` : ''}</span>${stars(w.s)}<button type="button" class="spk sm" data-act="say" aria-label="발음 듣기">${SPK}</button></div>${backHtml(w)}</div>`;
     if (sess.practice) h += `<div class="rate two"><button type="button" class="go" data-act="pr" data-r="1">알아요<span>넘어가기</span></button><button type="button" class="again" data-act="pr" data-r="0">모름<span>다시 보기</span></button></div>`;
     else h += '<div class="rate">' + [3, 2, 1, 0].map(r =>                 // 오른손 엄지 기준: 쉬움 · 좋음 · 어려움 · 다시
       `<button type="button" class="${r === 0 ? 'again' : r === 2 ? 'go' : ''}" data-act="rate" data-r="${r}">${['다시', '어려움', '좋음', '쉬움'][r]}<span>${ivlLabel(nextState(c, r).ivl)}</span></button>`).join('') + '</div>';

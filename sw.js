@@ -1,5 +1,5 @@
 /* 토플 단어 - 오프라인 보관 (지하철에서도 열리게). 글꼴은 fonts-v1 에 따로 오래 보관 */
-var VERSION = "26.10.27-1";
+var VERSION = "26.10.27-2";
 var CACHE = "toefl-voca-v" + VERSION;
 var CORE = ["./", "./index.html", "./manifest.webmanifest",
             "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png"];
