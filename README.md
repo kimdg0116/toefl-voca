@@ -18,8 +18,8 @@
 카드는 더 많이 본 쪽, 기록은 큰 값, 취약 단어는 나중에 바뀐 쪽. 설정은 기기마다 따로. 연결 코드는 `sync/Secret.js` (git 제외).
 
 ```bash
-cd sync && ~/Desktop/app/dosimetrist-calendar-server/tools/node_modules/.bin/clasp push -f
-~/Desktop/app/dosimetrist-calendar-server/tools/node_modules/.bin/clasp redeploy AKfycbxccqOGEEhECaEQHd3x51VZJ6TJnHLcANqSNr1RYEiaXGUpZGG5hwtd_ndgjKnZ6oal
+cd sync && ~/Code/apps/dosimetrist-calendar-server/tools/node_modules/.bin/clasp push -f
+~/Code/apps/dosimetrist-calendar-server/tools/node_modules/.bin/clasp redeploy AKfycbxccqOGEEhECaEQHd3x51VZJ6TJnHLcANqSNr1RYEiaXGUpZGG5hwtd_ndgjKnZ6oal
 node tools/test_merge.mjs   # 합치기 확인
 ```
 

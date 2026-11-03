@@ -10,7 +10,7 @@ import json, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = sys.argv[1] if len(sys.argv) > 1 else '.'
-VAULT_DAYS = os.path.expanduser('~/Desktop/Obsidian_Dongkyu/04 Life/토플/단어')
+VAULT_DAYS = os.path.expanduser('~/Obsidian_Dongkyu/04 Life/토플/단어')
 OUT = os.path.join(HERE, '..', 'data', 'toefl-words.json')
 PHON = os.path.join(HERE, '..', 'data', 'toefl-phonetics.tsv')
 

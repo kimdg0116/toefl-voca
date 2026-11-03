@@ -7,7 +7,7 @@
  *   다르면 저장하지 않고 서버 진도를 준다 → 앱이 합쳐서(merge) 그 rev 로 다시 보낸다
  * 연결 코드는 Secret.js 의 CODE (git 제외, clasp 로만 올라감)
  *
- * 반영: cd sync && ~/Desktop/app/dosimetrist-calendar-server/tools/node_modules/.bin/clasp push -f
+ * 반영: cd sync && ~/Code/apps/dosimetrist-calendar-server/tools/node_modules/.bin/clasp push -f
  *       && …/clasp redeploy <배포 ID>   (배포 ID 는 앱 SYNC_URL 의 /s/…/exec 사이, URL 유지)
  */
 const CH = 8000;                                             // Script Properties 값 하나는 9KB 까지
