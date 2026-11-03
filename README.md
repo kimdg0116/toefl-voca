@@ -28,7 +28,7 @@ node tools/test_merge.mjs   # 합치기 확인
 ```bash
 # 1) PDF 페이지 OCR (Apple Vision, 약 5분) -> <work>/pg/pNNN.tsv
 swiftc -O tools/ocr.swift -o <work>/ocr
-python3 -c "import pymupdf,subprocess,os;d=pymupdf.open(os.path.expanduser('~/Desktop/토플/해커스 vocabulary 초록.pdf'));os.makedirs('<work>/pg',exist_ok=True)
+python3 -c "import pymupdf,subprocess,os;d=pymupdf.open(os.path.expanduser('~/Documents/공부/토플/해커스 vocabulary 초록.pdf'));os.makedirs('<work>/pg',exist_ok=True)
 for i in range(19,331): p=f'<work>/pg/p{i:03d}.png'; d[i].get_pixmap(dpi=150).save(p); subprocess.run(['<work>/ocr',p])"
 # 2) 구조화 + OCR 철자 교정 + 옵시디언 Day 01·02 복습 기록 이어붙이기
 python3 tools/build_words.py <work>
