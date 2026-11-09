@@ -6,7 +6,7 @@
 <title>TOEFL VOCA</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- 상태 막대 태그는 넣지 않는다: iOS 26 에서 black-translucent 는 위(다이나믹 아일랜드 아래)를 흐리게 덮고 바닥 62pt 를 비운다. 막대는 맨 위 고정 띠(.sbar) 색을 따른다 -->
 <meta name="apple-mobile-web-app-title" content="토플 단어">
 <meta name="theme-color" content="#e3eeff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#142039" media="(prefers-color-scheme: dark)">
@@ -307,7 +307,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.11.09-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.11.09-2';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
