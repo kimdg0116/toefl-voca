@@ -114,6 +114,9 @@ button { font-family:inherit; cursor:pointer; }
 @font-face { font-family:"SUIT Variable"; src:url(https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2.0.5/fonts/variable/woff2/SUIT-Variable.woff2) format("woff2-variations"); font-weight:100 900; font-display:block; }
 
 /* 상단 바 */
+/* iOS 26 홈 화면 앱은 맨 위 position:fixed 요소의 색으로 상태 막대를 잇고, 없으면(sticky 만 있으면) 막대 아래 제목 줄을 흐리게 덮는다.
+   위 막대와 같은 색의 고정 띠를 위 막대 윗여백 안에만 깐다 */
+.sbar { position:fixed; top:0; left:0; right:0; z-index:21; height:calc(12px + env(safe-area-inset-top, 0px)); background:var(--bg-top); }
 .top { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:10px;
   margin:0 calc(-1 * var(--gut)) 14px; padding:calc(12px + env(safe-area-inset-top, 0px)) var(--gut) 12px;
   background:var(--bg-top); color:var(--bar-fg); }
@@ -266,6 +269,7 @@ footer { margin-top:28px; }
 </style>
 </head>
 <body>
+<div class="sbar" aria-hidden="true"></div>
 <div class="top">
   <button type="button" class="icon-btn" id="back" aria-label="뒤로" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
   <button type="button" class="brand" id="brand">TOEFL VOCA</button>
@@ -303,7 +307,7 @@ footer { margin-top:28px; }
 <input type="file" id="fileAudio" hidden>
 
 <script>
-const APP_VERSION = '26.10.27-2';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
+const APP_VERSION = '26.11.09-1';                                     // 올릴 때마다 version.json · sw.js 와 같이 올린다
 document.getElementById('ver').textContent = 'v' + APP_VERSION;
 const KW = 'tv.words', KS = 'tv.state';
 const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
